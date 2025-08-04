@@ -3,7 +3,8 @@ name: Publish
 on:
   push:
     branches:
-      - main
+      - feat/update-sri-test
+      # - main
 
 env:
   REACT_APP_POLLING_INTERVAL: 300000
@@ -39,3 +40,24 @@ jobs:
           build_dir: static-assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check out mkdocs
+        uses: actions/checkout@v4
+        with:
+          repository: bpsoraggi/mkdocs-material
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+          path: ${{ github.workspace }}/mkdocs-material
+
+      - name: Update mkdocs integrity hash
+        run: |
+          cd ${{ github.workspace }}/mkdocs-material
+          ls -la
+          NEW_HASH=$(curl -s https://traefik.github.io/traefiklabs-header-app/main-v1.js | openssl dgst -sha384 -binary | openssl base64 -A)
+          sed -i 's|\(src="https://traefik.github.io/traefiklabs-header-app/main-v1.js".*integrity="sha384-\)[a-zA-Z0-9]\{8,128\}|\1'$NEW_HASH'|' src/base.html
+
+      - name: commit and push changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          message: "chore(deps): update SRI"
+          new_branch: chore/update-sri
